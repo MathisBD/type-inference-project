@@ -70,7 +70,8 @@ module Make(T : Utils.Functor) = struct
   let rec has_type (env : env) (t : Untyped.term) (w : variable) : (STLC.term, err) t =
     match t with
     | Untyped.Var x ->
-      Utils.not_yet "Infer.has_type: Var case" (env, t, w, x)
+      let+ aaa = decode (Env.find x env)
+      in STLC.Var x
     | Untyped.App (t, u) ->
       Utils.not_yet "Infer.has_type: App case" (env, t, u, fun () -> has_type)
     | Untyped.Abs (x, t) ->

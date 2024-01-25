@@ -99,5 +99,6 @@ module Make (T : Utils.Functor) = struct
 
       For more details on binding operators, see
         https://v2.ocaml.org/releases/5.1/manual/bindingops.html
+      ]}
   *)
 end

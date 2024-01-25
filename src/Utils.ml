@@ -10,7 +10,7 @@ module Variables () : sig
   type t = private {
     name: string;
     stamp: int;
-  }
+  } 
 
   val compare : t -> t -> int
   val eq : t -> t -> bool

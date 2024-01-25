@@ -279,7 +279,7 @@ Unification can sometimes create cyclic types. We decide to reject
 these situations with an error. (We could also accept those as they
 preserve type-safety, but they have the issue, just like the
 OCaml -rectypes option, that they allow to write somewhat-nonsensical
-program, and our random term generator will be very good at finding
+programs, and our random term generator will be very good at finding
 a lot of those.)
 
   $ minihell $FLAGS --log-solver selfapp.test

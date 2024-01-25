@@ -4,7 +4,7 @@
 
 The goal of this programming project is to reuse a constraint-based
 type inference engine (for a simple lamda-calculus) to implement
-a random generator of well-typed term.
+a random generator of well-typed terms.
 
 Contact: gabriel.scherer@inria.fr .
 
@@ -21,7 +21,7 @@ implementation very well.
 To generate well-typed terms, a common approach is to write a random
 generator that "inverts" the rules of the type-system, from the root
 of the typing derivation to the leaves. If the generator wants to
-generate a term at a given type, it can list the typing rule that may
+generate a term at a given type, it can list the typing rules that may
 produce this output type, decide to apply one of them, which
 corresponds to choosing the head term-former of the generated program,
 and in turn requires generating subterms whose types are given by the
@@ -115,7 +115,7 @@ For convenience, we setup a [local](https://opam.ocaml.org/blog/opam-local-switc
 $ opam switch create . --deps-only --with-doc --with-test
 $ eval $(opam env)
 ```
-
+  
 To configure your favorite text editor, see the [Real World OCaml setup](http://dev.realworldocaml.org/install.html#editor-setup).
 
 #### Tip on GADTs in OCaml
@@ -371,14 +371,14 @@ you prefer).
    You should feel free to modify these programs if you wish, but you
    do not need to.
 
-- `src/`: the bulk of the code, that place where we expect you to
+- `src/`: the bulk of the code, the place where we expect you to
    work. `src/*.{ml,mli}` are the more important modules that you will
    have to modify or use directly. `src/support/*.{ml,mli}` has the
    less interesting support code. (Again, feel free to modify the
    support code, but you do not need to.)
 
    + `Generator.ml,mli`: the random term generator (you only need to
-     look at this late in the project, feel free to skip it at first)
+      look at this late in the project, feel free to skip it at first)
 
    + `Infer.ml,mli`: the type-inference engine, that generates constraints
       with elaboration
