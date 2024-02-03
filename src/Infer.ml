@@ -52,9 +52,26 @@ module Make(T : Utils.Functor) = struct
         [∃?w3 ?w4. ?w3 = ?v1 -> ?w4 ∧ ?w4 = ?v2 -> ?v3 ∧ k ?w3].
   *)
   let rec bind (ty : STLC.ty) (k : Constraint.variable -> ('a, 'e) t) : ('a, 'e) t =
-    (* Feel free to postpone implementing this function
-       until you implement the Annot case below. *)
-    Utils.not_yet "Infer.bind" (ty, k, fun () -> bind)
+    match ty with 
+    | Constr (Var v) ->
+      let w = Var.fresh v.name in
+        Exist (w, Some (Var v), k w)
+    | Constr (Arrow (ty1, ty2)) ->
+      bind ty1 @@ fun v1 ->
+      bind ty2 @@ fun v2 ->
+        let w = Var.fresh "w" in
+          Exist (w, Some (Arrow (v1, v2)), k w)
+    | Constr (Prod tys) ->
+      bind_list tys @@ fun vs ->
+        let w = Var.fresh "w" in 
+          Exist (w, Some (Prod vs), k w)
+  and bind_list (tys : STLC.ty list) (k : Constraint.variable list -> ('a, 'e) t) : ('a, 'e) t = 
+    match tys with 
+    | [] -> k []
+    | ty :: tys -> 
+      bind ty @@ fun v -> 
+      bind_list tys @@ fun vs -> 
+        k (v :: vs)
 
   (** This function generates a typing constraint from an untyped term:
       [has_type env t w] generates a constraint [C] which contains [w] as
@@ -70,22 +87,45 @@ module Make(T : Utils.Functor) = struct
   let rec has_type (env : env) (t : Untyped.term) (w : variable) : (STLC.term, err) t =
     match t with
     | Untyped.Var x ->
-      let+ aaa = decode (Env.find x env)
+      let+ _ = eq w (Env.find x env)
       in STLC.Var x
-    | Untyped.App (t, u) ->
-      Utils.not_yet "Infer.has_type: App case" (env, t, u, fun () -> has_type)
+    | Untyped.App (t, u) -> 
+      let vt = Var.fresh "wt" in 
+      let vu = Var.fresh "wu" in
+        Exist (vu, None, 
+        Exist (vt, Some (Arrow (vu, w)),
+          let+ t' = has_type env t vt 
+          and+ u' = has_type env u vu
+          in STLC.App (t', u')))
     | Untyped.Abs (x, t) ->
-      Utils.not_yet "Infer.has_type: Abs case" (env, x, t, fun () -> has_type)
+      let vx = Var.fresh x.name in
+      let varr = Var.fresh "warr" in 
+      let vt = Var.fresh "wt" in
+        Exist (vx, None, 
+        Exist (vt, None, 
+        Exist (varr, Some (Arrow (vx, vt)), 
+          let+ t' = has_type (Env.add x vx env) t vt
+          and+ tx = decode vx 
+          and+ _  = eq w varr 
+          in STLC.Abs (x, tx, t'))))
     | Untyped.Let (x, t, u) ->
-      Utils.not_yet "Infer.has_type: Let case" (env, x, t, u, fun () -> has_type)
+      let vx = Var.fresh x.name in
+        Exist (vx, None,
+          let+ t' = has_type env t vx
+          and+ u' = has_type (Env.add x vx env) u w
+          and+ tx = decode vx
+          in STLC.Let (x, tx, t', u'))
     | Untyped.Annot (t, ty) ->
-      Utils.not_yet "Infer.has_type: Let case" (env, t, ty, bind, fun () -> has_type)
+      bind ty @@ fun v -> 
+        let+ t' = has_type env t v
+        and+ _  = eq v w
+        in t'
     | Untyped.Tuple ts ->
       let (t1, t2) = assume_pair ts in
-      Utils.not_yet "Infer.has_type: Let case" (env, t1, t2, fun () -> has_type)
+      Utils.not_yet "Infer.has_type: Tuple case" (env, t1, t2, fun () -> has_type)
     | Untyped.LetTuple (xs, t, u) ->
       let (x1, x2) = assume_pair xs in
-      Utils.not_yet "Infer.has_type: Let case" (env, x1, x2, t, u, fun () -> has_type)
+      Utils.not_yet "Infer.has_type: LetTuple case" (env, x1, x2, t, u, fun () -> has_type)
     | Do p ->
       (* Feel free to postone this until you start looking
          at random generation. Getting type inference to
