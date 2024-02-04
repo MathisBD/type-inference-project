@@ -7,49 +7,36 @@ let string_of_doc doc =
   Buffer.contents buf
 
 module Variables () : sig
-  type t = private {
-    name: string;
-    stamp: int;
-  } 
+  type t = private { name : string; stamp : int }
 
   val compare : t -> t -> int
   val eq : t -> t -> bool
-
   val fresh : string -> t
-
-  val namegen : string array -> (unit -> t)
-
+  val namegen : string array -> unit -> t
   val name : t -> string
-
   val print : t -> PPrint.document
 
   module Set : Set.S with type elt = t
   module Map : Map.S with type key = t
 end = struct
-  type t = {
-    name: string;
-    stamp: int;
-  }
+  type t = { name : string; stamp : int }
 
   let name v = v.name
-
   let compare = Stdlib.compare
-  let eq n1 n2 = (compare n1 n2 = 0)
-
+  let eq n1 n2 = compare n1 n2 = 0
   let stamps = Hashtbl.create 42
+
   let fresh name =
     let stamp =
-      match Hashtbl.find_opt stamps name with
-      | None -> 0
-      | Some n -> n
+      match Hashtbl.find_opt stamps name with None -> 0 | Some n -> n
     in
     Hashtbl.replace stamps name (stamp + 1);
-    { name; stamp; }
+    { name; stamp }
 
   let namegen names =
     if names = [||] then failwith "namegen: empty names array";
     let counter = ref 0 in
-    let wrap n = n mod (Array.length names) in
+    let wrap n = n mod Array.length names in
     fun () ->
       let idx = !counter in
       counter := wrap (!counter + 1);
@@ -61,14 +48,17 @@ end = struct
 
   module Key = struct
     type nonrec t = t
+
     let compare = compare
   end
-  module Set = Set.Make(Key)
-  module Map = Map.Make(Key)
+
+  module Set = Set.Make (Key)
+  module Map = Map.Make (Key)
 end
 
 module type Functor = sig
   type 'a t
+
   val map : ('a -> 'b) -> 'a t -> 'b t
 end
 
@@ -77,11 +67,12 @@ end
     values. *)
 module type MonadPlus = sig
   include Functor
+
   val return : 'a -> 'a t
   val bind : 'a t -> ('a -> 'b t) -> 'b t
-
   val sum : 'a t list -> 'a t
   val fail : 'a t
+
   val one_of : 'a array -> 'a t
   (** [fail] and [one_of] can be derived from [sum], but
       they typically have simpler and more efficient
@@ -113,10 +104,12 @@ module type MonadPlus = sig
 end
 
 module Empty = struct
-  type 'a t = | (* the empty type *)
-  let map (_ : 'a -> 'b) : 'a t -> 'b t = function
-    | _ -> .
-end
-module _ = (Empty : Functor)
+  type 'a t = |
 
-let not_yet fname = fun _ -> failwith (fname ^ ": not implemented yet")
+  (* the empty type *)
+  let map (_ : 'a -> 'b) : 'a t -> 'b t = function _ -> .
+end
+
+module _ : Functor = Empty
+
+let not_yet fname _ = failwith (fname ^ ": not implemented yet")

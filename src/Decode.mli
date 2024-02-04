@@ -1,5 +1,6 @@
 type env = Unif.Env.t
 
+val decode : env -> Constraint.variable -> STLC.ty
 (** Suppose the unification environment [env] contains the following equations:
 
     ?w = ?w1 -> ?w2
@@ -18,4 +19,3 @@ type env = Unif.Env.t
     a fresh (rigid) type variable (which is assumed distinct from
     everything else, but nothing else): [?w3] decodes into [int -> α].
 *)
-val decode : env -> Constraint.variable -> STLC.ty

@@ -5,10 +5,10 @@
 *)
 
 module Make (T : Utils.Functor) = struct
-  module Constraint = Constraint.Make(T)
-  module SatConstraint = SatConstraint.Make(T)
-  module ConstraintSimplifier = ConstraintSimplifier.Make(T)
-  module ConstraintPrinter = ConstraintPrinter.Make(T)
+  module Constraint = Constraint.Make (T)
+  module SatConstraint = SatConstraint.Make (T)
+  module ConstraintSimplifier = ConstraintSimplifier.Make (T)
+  module ConstraintPrinter = ConstraintPrinter.Make (T)
 
   type env = Unif.Env.t
   type log = PPrint.document list
@@ -24,10 +24,8 @@ module Make (T : Utils.Functor) = struct
       in
       Queue.add doc logs
     in
-    let get_log () =
-      logs |> Queue.to_seq |> List.of_seq
-    in
-    add_to_log, get_log
+    let get_log () = logs |> Queue.to_seq |> List.of_seq in
+    (add_to_log, get_log)
 
   (** See [../README.md] ("High-level description") or [Solver.mli]
       for a description of normal constraints and
@@ -37,12 +35,10 @@ module Make (T : Utils.Functor) = struct
     | NErr of 'e
     | NDo of ('a, 'e) Constraint.t T.t
 
-  let eval (type a e) ~log (env : env) (c0 : (a, e) Constraint.t)
-    : log * env * (a, e) normal_constraint
-  =
+  let eval (type a e) ~log (env : env) (c0 : (a, e) Constraint.t) :
+      log * env * (a, e) normal_constraint =
     let add_to_log, get_log =
-      if log then make_logger c0
-      else ignore, (fun _ -> [])
+      if log then make_logger c0 else (ignore, fun _ -> [])
     in
     (* We recommend calling the function [add_to_log] above
        whenever you get an updated environment. Then call
@@ -58,5 +54,4 @@ module Make (T : Utils.Functor) = struct
        stderr right away if you need dirtier ways to debug.)
     *)
     Utils.not_yet "Solver.eval" (env, c0, add_to_log, get_log)
-
 end

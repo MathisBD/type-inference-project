@@ -9,10 +9,7 @@
 
 type var = Constraint.variable
 
-type repr = {
-  var: var;
-  structure: Constraint.structure option;
-}
+type repr = { var : var; structure : Constraint.structure option }
 (** [repr] represents all the knowledge so far about an inference
     variable, or rather an equivalence class of inference variables
     that are equal to each other:
@@ -24,15 +21,13 @@ module Env : sig
   type t
 
   val empty : t
-
   val mem : var -> t -> bool
-
   val add : var -> Constraint.structure option -> t -> t
 
+  val repr : var -> t -> repr
   (** [repr x env] gets the representant of [x] in [env].
 
       @raise [Not_found] if [x] is not bound in [env]. *)
-  val repr : var -> t -> repr
 end
 
 (** Unification errors:
@@ -46,9 +41,7 @@ end
       It returns one variable belonging to the prospective cycle.
 *)
 
-type err =
-  | Clash of var Utils.clash
-  | Cycle of var Utils.cycle
+type err = Clash of var Utils.clash | Cycle of var Utils.cycle
 
 val unify : Env.t -> var -> var -> (Env.t, err) result
 (** [unify env v1 v2] takes the current equation environment [env],

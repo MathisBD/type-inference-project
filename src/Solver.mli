@@ -9,14 +9,11 @@ module Make (T : Utils.Functor) : sig
       inside [Do p] nodes. *)
   type ('a, 'e) normal_constraint =
     | NRet of 'a Constraint.on_sol
-      (** A succesfully elaborated value.
+        (** A succesfully elaborated value.
           (See Constraint.ml for exaplanations on [on_sol].) *)
-
-    | NErr of 'e
-      (** A failed/false constraint. *)
-
+    | NErr of 'e  (** A failed/false constraint. *)
     | NDo of ('a, 'e) Constraint.t T.t
-      (** A constraint whose evaluation encountered an effectful
+        (** A constraint whose evaluation encountered an effectful
           constraint in a [Do p] node.
 
           We propose an evaluation rule of the form
@@ -28,13 +25,15 @@ module Make (T : Utils.Functor) : sig
             [E[_] : ('a1, 'e1) Constraint.t -> ('a2, 'e2) Constraint.t]
       *)
 
+  val eval :
+    log:bool ->
+    env ->
+    ('a, 'e) Constraint.t ->
+    log * env * ('a, 'e) normal_constraint
   (** If [~log:true] is passed in input, collect a list of
       intermediate steps (obtained from the solver
       environment and the original constraint by
       constraint simplification) as the constraint-solving
       progresses. Otherwise the returned [log] will not be
       used and could be returned empty. *)
-  val eval :
-    log:bool -> env -> ('a, 'e) Constraint.t ->
-    log       * env  * ('a, 'e) normal_constraint
 end

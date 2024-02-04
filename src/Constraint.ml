@@ -11,23 +11,19 @@
    and outside the Make functor. Please don't let this small quirk
    distract you. *)
 module Types = struct
-  module Var = Utils.Variables()
+  module Var = Utils.Variables ()
 
   type variable = Var.t
   type structure = variable Structure.t
-
-  type ty =
-    | Var of variable
-    | Constr of structure
+  type ty = Var of variable | Constr of structure
 end
+
 include Types
 
 module Make (T : Utils.Functor) = struct
   include Types
 
-  type eq_error =
-    | Clash of STLC.ty Utils.clash
-    | Cycle of variable Utils.cycle
+  type eq_error = Clash of STLC.ty Utils.clash | Cycle of variable Utils.cycle
 
   (** A value of type [('a, 'e) t] is a constraint
       whose resolution will either succeed, and produce
@@ -82,8 +78,8 @@ module Make (T : Utils.Functor) = struct
       explictly-typed term [lambda (y : int). 42].
   *)
 
-  let (let+) c f = Map(c, f)
-  let (and+) c1 c2 = Conj(c1, c2)
+  let ( let+ ) c f = Map (c, f)
+
   (** These are "binding operators". Usage example:
       {[
         let+ ty1 = Decode w1
@@ -93,12 +89,13 @@ module Make (T : Utils.Functor) = struct
 
       After desugaring the binding operators, this is equivalent to
       {[
-      Map(Conj(Decode w1, Decode w2), fun (ty1, ty2) ->
-        Constr (Arrow (ty1, ty2)))
+        Map(Conj(Decode w1, Decode w2), fun (ty1, ty2) ->
+          Constr (Arrow (ty1, ty2)))
       ]}
 
       For more details on binding operators, see
         https://v2.ocaml.org/releases/5.1/manual/bindingops.html
       ]}
   *)
+  let ( and+ ) c1 c2 = Conj (c1, c2)
 end

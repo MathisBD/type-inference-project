@@ -1,4 +1,4 @@
-module Make(T : Utils.Functor) : sig
+module Make (T : Utils.Functor) : sig
   module Untyped := Untyped.Make(T)
   module Constraint := Constraint.Make(T)
 
@@ -13,6 +13,6 @@ module Make(T : Utils.Functor) : sig
 
   type env = Constraint.variable Untyped.Var.Map.t
 
-  val has_type : env ->
-    Untyped.term -> Constraint.variable -> STLC.term constraint_
+  val has_type :
+    env -> Untyped.term -> Constraint.variable -> STLC.term constraint_
 end
