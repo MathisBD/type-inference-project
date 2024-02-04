@@ -74,7 +74,7 @@ constraint. It will also show the result type and the
 elaborated term.
 
   $ FLAGS="--show-source --show-constraint"
-
+  
 Remark: You can call minihell from the command-line yourself
 by using either
 > dune exec bin/minihell.exe -- <arguments>

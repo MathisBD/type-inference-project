@@ -89,7 +89,23 @@ module Make (T : Utils.Functor) = struct
     | NRet on_sol, NDo c' -> 
         ndo_map c' @@ fun cinner' -> 
         Constraint.Conj (Constraint.Ret on_sol, cinner')
-            
+        
+  (* Build a [STLC.ty] that represents a given inference variable. *)
+  let var_to_ty (w : Constraint.variable) : STLC.ty =
+    Constr (Var (Structure.TyVar.fresh w.name))
+  (* Build a [STLC.ty] that represents a given structure on inference variables. *)
+  let struc_to_ty (struc : Constraint.structure) : STLC.ty = 
+    match struc with 
+    | Var v -> Constr (Var v)
+    | Arrow (w1, w2) -> Constr (Arrow (var_to_ty w1, var_to_ty w2))
+    | Prod ws -> Constr (Prod (List.map var_to_ty ws))
+  (* Build a [STLC.ty] that represents a given unification variable. *)
+  let repr_to_ty (repr : Unif.repr) : STLC.ty = 
+    match repr.structure with 
+    | None -> var_to_ty repr.var
+    | Some struc -> struc_to_ty struc
+
+  (* This implements the main constraint solving logic. *)
   let rec eval_aux : type a e. (env -> unit) -> env -> (a, e) Constraint.t -> 
       env * (a, e) normal_constraint =
     fun add_to_log env c ->
@@ -109,13 +125,18 @@ module Make (T : Utils.Functor) = struct
         let (env'', nc') = eval_aux add_to_log env' c' in
         (env'', conj nc nc')
     | Eq (w1, w2) ->
+        (* The [Eq (w1, w2)] constraint simply triggers unification of w1 and w2. *)
         begin match Unif.unify env w1 w2 with 
         | Ok env' -> add_to_log env' ; (env', NRet (fun _ -> ()))
         | Error (Cycle w) -> (env, NErr (Constraint.Cycle w))
         | Error (Clash (w1, w2)) -> 
-            Printf.ksprintf failwith 
-              "ERROR >>> Clash (%s/%d, %s/%d)\n" w1.name w1.stamp w2.name w2.stamp
-            (*(env, NErr (Constraint.Clash (w1, w2)))*)
+            (* We have to convert w1 and w2 to a more user-friendly representation. 
+             * We look in the env and construct a pair of STLC.ty. *)
+            let r1 = Unif.Env.repr w1 env in
+            let r2 = Unif.Env.repr w2 env in
+            (env, NErr (Constraint.Clash (repr_to_ty r1, repr_to_ty r2)))
+            (*Printf.ksprintf failwith 
+              "ERROR >>> Clash (%s/%d, %s/%d)\n" w1.name w1.stamp w2.name w2.stamp*)
         end
     | Exist (w, struc, c) -> 
         let env' = Unif.Env.add w struc env in
@@ -131,21 +152,7 @@ module Make (T : Utils.Functor) = struct
     let add_to_log, get_log =
       if log then make_logger c0 else (ignore, fun _ -> [])
     in
-    (* We recommend calling the function [add_to_log] above
-       whenever you get an updated environment. Then call
-       [get_log] at the end to get a list of log message.
-
-       $ dune exec -- minihell --log-solver foo.test
-
-       will show a log that will let you see the evolution
-       of your input constraint (after simplification) as
-       the solver progresses, which is useful for debugging.
-
-       (You can also tweak this code temporarily to print stuff on
-       stderr right away if you need dirtier ways to debug.)
-    *)
     let (env, nc) = eval_aux add_to_log env0 c0 in
     (get_log(), env, nc)
-
 
 end
