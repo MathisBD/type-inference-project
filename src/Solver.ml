@@ -111,7 +111,11 @@ module Make (T : Utils.Functor) = struct
     | Eq (w1, w2) ->
         begin match Unif.unify env w1 w2 with 
         | Ok env' -> add_to_log env' ; (env', NRet (fun _ -> ()))
-        | Error err -> Utils.not_yet "Solver.eval: Eq.Error case" (err)
+        | Error (Cycle w) -> (env, NErr (Constraint.Cycle w))
+        | Error (Clash (w1, w2)) -> 
+            Printf.ksprintf failwith 
+              "ERROR >>> Clash (%s/%d, %s/%d)\n" w1.name w1.stamp w2.name w2.stamp
+            (*(env, NErr (Constraint.Clash (w1, w2)))*)
         end
     | Exist (w, struc, c) -> 
         let env' = Unif.Env.add w struc env in
