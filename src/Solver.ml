@@ -125,7 +125,7 @@ module Make (T : Utils.Functor) = struct
         let (env'', nc') = eval_aux add_to_log env' c' in
         (env'', conj nc nc')
     | Eq (w1, w2) ->
-        (* The [Eq (w1, w2)] constraint simply triggers unification of w1 and w2. *)
+        (* The [Eq (w1, w2)] constraint triggers unification of w1 and w2. *)
         begin match Unif.unify env w1 w2 with 
         | Ok env' -> add_to_log env' ; (env', NRet (fun _ -> ()))
         | Error (Cycle w) -> (env, NErr (Constraint.Cycle w))
@@ -135,8 +135,6 @@ module Make (T : Utils.Functor) = struct
             let r1 = Unif.Env.repr w1 env in
             let r2 = Unif.Env.repr w2 env in
             (env, NErr (Constraint.Clash (repr_to_ty r1, repr_to_ty r2)))
-            (*Printf.ksprintf failwith 
-              "ERROR >>> Clash (%s/%d, %s/%d)\n" w1.name w1.stamp w2.name w2.stamp*)
         end
     | Exist (w, struc, c) -> 
         let env' = Unif.Env.add w struc env in

@@ -150,8 +150,5 @@ module Make (T : Utils.Functor) = struct
         and+ tx2 = decode w2
         in STLC.LetTuple ([ (x1, tx1); (x2, tx2) ], t', u')
     | Do p ->
-        (* Feel free to postone this until you start looking
-           at random generation. Getting type inference to
-           work on all the other cases is a good first step. *)
-        Utils.not_yet "Infer.has_type: Let case" (env, p, fun () -> has_type)
+        Do (T.map (fun t -> has_type env t w) p)
 end
