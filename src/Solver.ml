@@ -35,7 +35,94 @@ module Make (T : Utils.Functor) = struct
     | NErr of 'e
     | NDo of ('a, 'e) Constraint.t T.t
 
-  let eval (type a e) ~log (env : env) (c0 : (a, e) Constraint.t) :
+  let do_map (c : ('a, 'e) Constraint.t T.t) (f : ('a, 'e) Constraint.t -> ('b, 'f) Constraint.t) 
+      : ('b, 'f) Constraint.t =
+    Constraint.Do (T.map f c)
+  
+  let ndo_map (c : ('a, 'e) Constraint.t T.t) (f : ('a, 'e) Constraint.t -> ('b, 'f) Constraint.t) 
+      : ('b, 'f) normal_constraint =
+    NDo (T.map f c)
+  
+  (** Map a function on the result of a normal constraint.
+      For [NDo] we delay the actual computations 
+      i.e. we add a [Map fret] constraint inside the functor T.
+  *)
+  let map_nret (fret : 'a -> 'b) (nc : ('a, 'e) normal_constraint) : 
+      ('b, 'e) normal_constraint =
+    match nc with 
+    | NRet on_sol -> NRet (fun sol -> fret (on_sol sol))
+    | NErr err -> NErr err
+    | NDo c -> ndo_map c @@ fun cinner -> Constraint.Map (cinner, fret)
+
+  (** Map a function on the error of a normal constraint.
+      For [NDo] we delay the actual computations 
+      i.e. we add a [MapErr ferr] constraint inside the functor T.
+  *)
+  let map_nerr (ferr : 'e -> 'f) (nc : ('a, 'e) normal_constraint) : 
+      ('a, 'f) normal_constraint =
+    match nc with 
+    | NRet on_sol -> NRet on_sol
+    | NErr err -> NErr (ferr err)
+    | NDo c -> ndo_map c @@ fun cinner -> Constraint.MapErr (cinner, ferr)
+
+  (** Take the conjunction of the results of two normal constraints.
+      
+      If at least one of the inputs is [NErr], 
+      return [NErr] (choosing arbitrarily the error if both inputs are [NErr]).
+      
+      If at least one of the inputs is [NDo], 
+      return an [NDo] that delays the computation. 
+  *)
+  let conj (nc : ('a, 'e) normal_constraint) (nc' : ('b, 'e) normal_constraint) :
+      ('a * 'b, 'e) normal_constraint =
+    match (nc, nc') with 
+    (* TODO : for [NDo _, Nerr e], should we instead return [NDo Conj (_, Err e)] ? *)
+    | NErr err, _ | _, NErr err -> NErr err
+    | NRet on_sol, NRet on_sol' -> NRet (fun sol -> (on_sol sol, on_sol' sol))
+    | NDo c, NDo c' -> 
+        ndo_map c @@ fun cinner -> 
+        do_map c' @@ fun cinner' -> 
+        Constraint.Conj (cinner, cinner')
+    | NDo c, NRet on_sol' -> 
+        ndo_map c @@ fun cinner -> 
+        Constraint.Conj (cinner, Constraint.Ret on_sol')
+    | NRet on_sol, NDo c' -> 
+        ndo_map c' @@ fun cinner' -> 
+        Constraint.Conj (Constraint.Ret on_sol, cinner')
+            
+  let rec eval_aux : type a e. (env -> unit) -> env -> (a, e) Constraint.t -> 
+      env * (a, e) normal_constraint =
+    fun add_to_log env c ->
+    match c with
+    | Ret on_sol -> 
+        (env, NRet on_sol)
+    | Err e -> 
+        (env, NErr e)
+    | Map (c, fret) -> 
+        let (env', nc) = eval_aux add_to_log env c in
+        (env', map_nret fret nc)
+    | MapErr (c, ferr) ->
+        let (env', nc) = eval_aux add_to_log env c in
+        (env', map_nerr ferr nc)
+    | Conj (c, c') ->
+        let (env', nc) = eval_aux add_to_log env c in
+        let (env'', nc') = eval_aux add_to_log env' c' in
+        (env'', conj nc nc')
+    | Eq (w1, w2) ->
+        begin match Unif.unify env w1 w2 with 
+        | Ok env' -> add_to_log env' ; (env', NRet (fun _ -> ()))
+        | Error err -> Utils.not_yet "Solver.eval: Eq.Error case" (err)
+        end
+    | Exist (w, struc, c) -> 
+        let env' = Unif.Env.add w struc env in
+        add_to_log env' ;
+        eval_aux add_to_log env' c
+    | Decode w ->
+        (env, NRet (fun sol -> sol w))
+    | Do c -> 
+        (env, NDo c)
+
+  let eval (type a e) ~log (env0 : env) (c0 : (a, e) Constraint.t) :
       log * env * (a, e) normal_constraint =
     let add_to_log, get_log =
       if log then make_logger c0 else (ignore, fun _ -> [])
@@ -53,5 +140,8 @@ module Make (T : Utils.Functor) = struct
        (You can also tweak this code temporarily to print stuff on
        stderr right away if you need dirtier ways to debug.)
     *)
-    Utils.not_yet "Solver.eval" (env, c0, add_to_log, get_log)
+    let (env, nc) = eval_aux add_to_log env0 c0 in
+    (get_log(), env, nc)
+
+
 end

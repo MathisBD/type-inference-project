@@ -47,8 +47,20 @@ let map f = function
   | Arrow (t1, t2) -> Arrow (f t1, f t2)
   | Prod ts -> Prod (List.map f ts)
 
-let merge f s1 s2 = Utils.not_yet "Structure.merge" (f, s1, s2)
+let merge (f : 'a -> 'b -> 'c) (s1 : 'a t) (s2 : 'b t) : 'c t option =
+  match s1, s2 with 
+  | Var v1, Var v2 -> 
+      if v1 = v2 
+      then Some (Var v1) 
+      else None 
+  | Arrow (x1, y1), Arrow (x2, y2) -> Some (Arrow (f x1 x2, f y1 y2))
+  | Prod xs, Prod ys -> 
+      if List.length xs = List.length ys 
+      then Some (Prod (List.map2 f xs ys))
+      else None 
+  | _ -> None
 
+  
 let global_tyvar : string -> TyVar.t =
   (* There are no binders for type variables, which are scoped
      globally for the whole term. *)
