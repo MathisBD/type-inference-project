@@ -18,14 +18,27 @@ module Make (T : Utils.Functor) = struct
     let c0_erased = SatConstraint.erase c0 in
     let add_to_log env =
       (* DEBUG: Print the env. *)
-      (*let print_var name =
-        let v = Constraint.Var.make name 0 in
+      let print_var name stamp =
+        let v = Constraint.Var.make name stamp in
         try 
-          Printf.printf "%s ---> %s\n" 
-            (Utils.string_of_doc @@ Constraint.Var.print v)
-            (Utils.string_of_doc @@ Constraint.Var.print (Unif.Env.repr v env).var)
+          let r = Unif.Env.repr v env in
+          match r.structure with 
+          | None ->
+              Printf.printf "%s ---> %s\n" 
+                (Utils.string_of_doc @@ Constraint.Var.print v)
+                (Utils.string_of_doc @@ Constraint.Var.print r.var)
+          | Some s ->      
+              Printf.printf "%s ---> %s (%s)\n" 
+                (Utils.string_of_doc @@ Constraint.Var.print v)
+                (Utils.string_of_doc @@ Constraint.Var.print r.var)
+                (Utils.string_of_doc @@ Structure.print Constraint.Var.print s)
         with Not_found -> ()
-      in*)
+      in
+      print_var "final_type" 0 ;
+      print_var "x" 0 ;
+      print_var "y" 0 ;
+      print_var "wt" 0 ;
+      print_var "wt" 1 ;
       let doc =
         c0_erased
         |> ConstraintSimplifier.simplify env
@@ -34,9 +47,9 @@ module Make (T : Utils.Functor) = struct
       Queue.add doc logs ;
       (* TODO : debugging. *)
       (* Print the constraint. *)
-      (*doc 
+      doc 
         |> Utils.string_of_doc 
-        |> print_endline ;*)
+        |> print_endline ;
     in
     let get_log () = logs |> Queue.to_seq |> List.of_seq in
     (add_to_log, get_log)
@@ -163,6 +176,8 @@ module Make (T : Utils.Functor) = struct
     let add_to_log, get_log =
       if log then make_logger c0 else (ignore, fun _ -> [])
     in
+    print_endline "INITIAL ENV" ;
+    add_to_log env0 ;
     let (env, nc) = eval_aux add_to_log env0 c0 0 in
     (get_log(), env, nc)
 
