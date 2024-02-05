@@ -27,8 +27,7 @@ let () =
     Exist (b, None, 
       Conj ( 
         Eq (a, b),
-        Do MSeq.fail ) )
-    )
+        Do MSeq.fail )))
   in
   ignore @@ Solver.eval ~log:true Unif.Env.empty c
 

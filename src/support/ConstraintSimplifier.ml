@@ -13,10 +13,7 @@ module Make (T : Utils.Functor) = struct
     in
     let module VarSet = Constraint.Var.Set in
     let exist v s (fvs, c) : VarSet.t * sat_constraint =
-      (if not (Var.eq v (normalize v)) then 
-        Printf.printf 
-          "\n%s <> %s\n\n" (Utils.string_of_doc @@ Var.print v) (Utils.string_of_doc @@ Var.print @@ normalize v)
-      else () ) ;
+      assert (Var.eq v (normalize v)) ; 
       let s =
         match Unif.Env.repr v env with
         | exception Not_found -> s
@@ -29,8 +26,7 @@ module Make (T : Utils.Functor) = struct
       in
       (VarSet.remove v fvs, Exist (v, s, c))
     in
-    let rec simpl (bvs : VarSet.t) (c : sat_constraint) :
-        VarSet.t * sat_constraint =
+    let rec simpl (bvs : VarSet.t) (c : sat_constraint) : VarSet.t * sat_constraint =
       match c with
       | False ->
           (* Note: we do not attempt to normalize (⊥ ∧ C) into ⊥, (∃w. ⊥)
@@ -66,8 +62,8 @@ module Make (T : Utils.Functor) = struct
       | Decode v ->
           let v = normalize v in
           (VarSet.singleton v, Decode v)
-      (* TODO : commit this to main ? *)
-      | Do p -> (VarSet.empty, Do p)
+      | Do p -> 
+        (VarSet.empty, Do p)
     in
     let rec add_exist (fvs, c) =
       match VarSet.choose_opt fvs with
