@@ -12,7 +12,10 @@ module Make (M : Utils.MonadPlus) = struct
 
   (** Generate an integer in the range min (included) to max (excluded). *)
   let gen_int (min : int) (max : int) : int M.t =
-    M.one_of @@ Array.init (max - min) (fun i -> min + i)
+    if min >= max then 
+      M.fail
+    else
+      M.one_of @@ Array.init (max - min) (fun i -> min + i)
 
   (** Split a given quantity of [fuel] in two strictly positive sub-quantities whose sum is [fuel]. *)
   let split_fuel (fuel : int) : (int * int) M.t =
@@ -26,7 +29,7 @@ module Make (M : Utils.MonadPlus) = struct
     let open Untyped in 
     (* No more fuel left. This case really happens : let's say we want to generate a term 
      * with fuel=2, the App case for instance will recursively try to generate terms with fuel=0 and fuel=1,
-     * which as expected will fail (there are no closed terms with fuel<=2). *)
+     * which as expected will fail. *)
     if fuel <= 0 then Do M.fail
     (* Generate a variable. *)
     else if fuel = 1 then
