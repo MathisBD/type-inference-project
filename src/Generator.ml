@@ -81,7 +81,7 @@ module Make (M : Utils.MonadPlus) = struct
     in
     (* Generate terms by applying the constraint solver recursively. *)
     let rec solve env c =
-      let (_, env', nc) = Solver.eval ~log:false env c in
+      let (_, env, nc) = Solver.eval ~log:false env c in
       match nc with 
       (* Victory ! We produced a well-typed term. *)
       | Solver.NRet on_sol -> M.return @@ on_sol @@ Decode.decode env
@@ -89,7 +89,7 @@ module Make (M : Utils.MonadPlus) = struct
        * can't be typed. It's ok, we simply discard this term. *)
       | Solver.NErr _ -> M.fail
       (* We reached a Do node : recurse. *)
-      | Solver.NDo mc -> M.bind mc @@ fun c -> solve env' c
+      | Solver.NDo mc -> M.bind mc @@ fun c -> solve env c
     in
       solve Unif.Env.empty c0
 end
