@@ -28,9 +28,11 @@ let generate (module M : Utils.MonadPlus) =
   M.run @@ Gen.typed ~depth:config.depth
 
 let () =
+  (*generate (if config.exhaustive then (module MSeq) else (module MRand))*)
   generate (if config.exhaustive then (module MSeq) else (module MRand))
   |> Seq.take config.count
-  |> Seq.map STLCPrinter.print_term
+  |> Seq.map (fun (term, ty) -> 
+      PPrint.separate PPrint.hardline [STLCPrinter.print_term term; STLCPrinter.print_ty ty])
   |> List.of_seq
   |> PPrint.(separate (hardline ^^ hardline))
   |> Utils.string_of_doc |> print_endline

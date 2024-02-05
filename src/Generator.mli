@@ -3,5 +3,5 @@ module Make (M : Utils.MonadPlus) : sig
   module Constraint := Constraint.Make(M)
   module Infer := Infer.Make(M)
 
-  val typed : depth:int -> STLC.term M.t
+  val typed : depth:int -> (STLC.term * STLC.ty) M.t
 end

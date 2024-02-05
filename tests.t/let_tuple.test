@@ -1,0 +1,1 @@
+lambda u. let (x, y) = u in u

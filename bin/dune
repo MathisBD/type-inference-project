@@ -7,3 +7,8 @@
  (public_name minigen)
  (libraries constrained_generation)
  (modules minigen))
+
+(executable
+ (public_name minidebug)
+ (libraries constrained_generation)
+ (modules minidebug))
