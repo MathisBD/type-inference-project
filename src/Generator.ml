@@ -8,42 +8,85 @@ module Make (M : Utils.MonadPlus) = struct
   module TeVarSet = Untyped.Var.Set
   module TyVarSet = STLC.TyVar.Set
 
-  let untyped : Untyped.term =
-    (* This definition is *not* a good solution,
-       but it could give you a flavor of possible definitions. *)
-    let rec gen () : Untyped.term =
-      let open Untyped in
-      Do
-        ( M.delay @@ fun () ->
-          M.sum
-            [
-              M.return (App (gen (), gen ()));
-              (* try to generate applications... *)
-              M.delay (Utils.not_yet "Generator.untyped");
-              (* ... or fail *)
-            ] )
-    in
-    gen ()
+  let new_name = Untyped.Var.namegen [| "x"; "y"; "z"; "u"; "v" |]
 
-  let constraint_ : (STLC.term, Infer.err) Constraint.t =
-    let w = Constraint.Var.fresh "final_type" in
-    Constraint.(Exist (w, None, Infer.has_type Untyped.Var.Map.empty untyped w))
+  (** Generate an integer in the range min (included) to max (excluded). *)
+  let gen_int (min : int) (max : int) : int M.t =
+    M.one_of @@ Array.init (max - min) (fun i -> min + i)
+
+  (** Split a given quantity of [fuel] in two strictly positive sub-quantities whose sum is [fuel]. *)
+  let split_fuel (fuel : int) : (int * int) M.t =
+    M.map (fun f -> (f, fuel - f)) (gen_int 1 fuel) 
+
+  (** Generate an untyped term. The term will be closed (no free variables).
+      Parameter [vars] is the set of bound variables we are allowed use.
+      Parameter [fuel] is the number of [Do] nodes we can (and have to) use (in total, not per branch). 
+  *)
+  let rec gen_term ~(fuel: int) (vars : TeVarSet.t) () : Untyped.term =
+    let open Untyped in 
+    (* No more fuel left. This case really happens : let's say we want to generate a term 
+     * with fuel=2, the App case for instance will recursively try to generate terms with fuel=0 and fuel=1,
+     * which as expected will fail (there are no closed terms with fuel<=2). *)
+    if fuel <= 0 then Do M.fail
+    (* Generate a variable. *)
+    else if fuel = 1 then
+      (* Get a valid variable identifier. *)
+      let v = M.delay @@ fun () -> M.one_of @@ Array.of_list @@ TeVarSet.to_list vars in
+      (* We can't return a [Var] node because [v] is not an identifier but an identifier in the monad 
+       * (for instance in MSeq [v] would be a sequence of identifiers).
+       * We have to wrap [Var] in a [Do] node. *)
+      Do (M.map (fun v' -> Var v') v)
+    else
+      (* Pick a random node that isn't a variable. *)
+      Do 
+        ( M.delay @@ fun () ->
+          M.sum 
+            [
+              (* Application. *)
+              begin 
+                M.bind (split_fuel (fuel - 1)) @@ fun (f1, f2) ->
+                M.return @@ App (
+                  gen_term ~fuel:f1 vars (), 
+                  gen_term ~fuel:f2 vars () )
+              end;
+              (* Abstraction. *)
+              begin 
+                let x = new_name () in
+                M.return @@ Abs (
+                  x, 
+                  gen_term ~fuel:(fuel - 1) (TeVarSet.add x vars) () )
+              end;
+              (* Let in. *)
+              begin 
+                let x = new_name () in 
+                M.bind (split_fuel (fuel - 1)) @@ fun (f1, f2) ->
+                M.return @@ Let (
+                  x, 
+                  gen_term ~fuel:f1 vars (),
+                  gen_term ~fuel:f2 (TeVarSet.add x vars) () )
+              end;
+            ] )
 
   let typed ~depth =
-    (* This definition uses [constraint_] to generate well-typed terms.
-       An informal description of a possible way to do this is described
-       in the README, Section "Two or three effect instances", where
-       the function is valled [gen]:
-
-       > it is possible to define a function
-       >
-       >     val gen : depth:int -> ('a, 'e) constraint -> ('a, 'e) result M.t
-       >
-       > on top of `eval`, that returns all the results that can be reached by
-       > expanding `Do` nodes using `M.bind`, recursively, exactly `depth`
-       > times. (Another natural choice would be to generate all the terms that
-       > can be reached by expanding `Do` nodes *at most* `depth` times, but
-       > this typically gives a worse generator.)
-    *)
-    Utils.not_yet "Generator.typed" depth
+    (* Build an untyped term lazily (i.e. most computations are frozen at Do nodes). *)
+    let term = gen_term ~fuel:depth TeVarSet.empty () in
+    (* Build a constraint, again lazily (type inference stops at Do nodes 
+     * provided M is lazy). *)
+    let c0 =
+      let w = Constraint.Var.fresh "final_type" in
+      Constraint.(Exist (w, None, Infer.has_type Untyped.Var.Map.empty term w))
+    in
+    (* Generate terms by applying the constraint solver recursively. *)
+    let rec solve env c =
+      let (_, env', nc) = Solver.eval ~log:false env c in
+      match nc with 
+      (* Victory ! We produced a well-typed term. *)
+      | Solver.NRet on_sol -> M.return @@ on_sol @@ Decode.decode env
+      (* This is what happens when the [untyped] function generates a term that 
+       * can't be typed. It's ok, we simply discard this term. *)
+      | Solver.NErr _ -> M.fail
+      (* We reached a Do node : recurse. *)
+      | Solver.NDo mc -> M.bind mc @@ fun c -> solve env' c
+    in
+      solve Unif.Env.empty c0
 end

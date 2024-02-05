@@ -76,7 +76,6 @@ module Make (T : Utils.Functor) = struct
   let conj (nc : ('a, 'e) normal_constraint) (nc' : ('b, 'e) normal_constraint) :
       ('a * 'b, 'e) normal_constraint =
     match (nc, nc') with 
-    (* TODO : for [NDo _, Nerr e], should we instead return [NDo Conj (_, Err e)] ? *)
     | NErr err, _ | _, NErr err -> NErr err
     | NRet on_sol, NRet on_sol' -> NRet (fun sol -> (on_sol sol, on_sol' sol))
     | NDo c, NDo c' -> 
