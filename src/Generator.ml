@@ -34,12 +34,11 @@ module Make (M : Utils.MonadPlus) = struct
     (* Generate a variable. *)
     else if fuel = 1 then
       (* Get a valid variable identifier. *)
-      (*let v = M.delay @@ fun () -> M.one_of @@ Array.of_list @@ TeVarSet.to_list vars in
+      let v = M.delay @@ fun () -> M.one_of @@ Array.of_list @@ TeVarSet.to_list vars in
       (* We can't return a [Var] node because [v] is not an identifier but an identifier in the monad 
        * (for instance in MSeq [v] would be a sequence of identifiers).
        * We have to wrap [Var] in a [Do] node. *)
-      Do (M.map (fun v' -> Var v') v)*)
-      Do (M.return @@ Var (TeVarSet.choose vars))
+      Do (M.map (fun v' -> Var v') v)
     else  
       let x = new_name () in
       Abs ( x, gen_term ~fuel:(fuel - 1) (TeVarSet.add x vars) () )
@@ -91,10 +90,6 @@ module Make (M : Utils.MonadPlus) = struct
               end;*)
             ] )*)
 
-  let rec indent n str = 
-    if n <= 0 then str 
-    else String.cat " " (indent (n-1) str)
-
   let typed ~depth =
     (* Build an untyped term lazily (i.e. most computations are frozen at Do nodes). *)
     let term = gen_term ~fuel:depth TeVarSet.empty () in
@@ -109,7 +104,7 @@ module Make (M : Utils.MonadPlus) = struct
     in
     (* Generate terms by applying the constraint solver recursively. *)
     let rec solve env c depth =
-      let (_, env, nc) = Solver.eval ~log:true env c in
+      let (_, env, nc) = Solver.eval ~log:false env c in
       (* Print the log. *)
       (*log 
         |> PPrint.(separate (hardline))
@@ -118,16 +113,13 @@ module Make (M : Utils.MonadPlus) = struct
       match nc with 
       (* Victory ! We produced a well-typed term. *)
       | Solver.NRet on_sol -> 
-          print_endline (indent depth ">return") ;
           M.return @@ on_sol @@ Decode.decode env
       (* This is what happens when the [untyped] function generates a term that 
        * can't be typed. It's ok, we simply discard this term. *)
       | Solver.NErr _ -> 
-          print_endline (indent depth ">error") ;
           M.fail
       (* We reached a Do node : recurse. *)
       | Solver.NDo mc -> 
-          print_endline (indent depth ">ndo") ;
           M.bind mc @@ fun c -> solve env c (depth+1)
     in
       solve Unif.Env.empty c0 0

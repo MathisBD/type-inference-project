@@ -28,7 +28,6 @@ let generate (module M : Utils.MonadPlus) =
   M.run @@ Gen.typed ~depth:config.depth
 
 let () =
-  (*generate (if config.exhaustive then (module MSeq) else (module MRand))*)
   generate (if config.exhaustive then (module MSeq) else (module MRand))
   |> Seq.take config.count
   |> Seq.map (fun (term, ty) -> 
