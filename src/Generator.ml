@@ -11,7 +11,7 @@ module Make (M : Utils.MonadPlus) = struct
   let new_name = Untyped.Var.namegen [| "x"; "y"; "z"; "u"; "v" |]
 
   (** Generate an integer in the range min (included) to max (excluded). *)
-  (*let gen_int (min : int) (max : int) : int M.t =
+  let gen_int (min : int) (max : int) : int M.t =
     if min >= max then 
       M.fail
     else
@@ -19,7 +19,7 @@ module Make (M : Utils.MonadPlus) = struct
 
   (** Split a given quantity of [fuel] in two strictly positive sub-quantities whose sum is [fuel]. *)
   let split_fuel (fuel : int) : (int * int) M.t =
-    M.map (fun f -> (f, fuel - f)) (gen_int 1 fuel) *)
+    M.map (fun f -> (f, fuel - f)) (gen_int 1 fuel) 
 
   (** Generate an untyped term. The term will be closed (no free variables).
       Parameter [vars] is the set of bound variables we are allowed use.
@@ -40,21 +40,18 @@ module Make (M : Utils.MonadPlus) = struct
        * We have to wrap [Var] in a [Do] node. *)
       Do (M.map (fun v' -> Var v') v)
     else  
-      let x = new_name () in
-      Abs ( x, gen_term ~fuel:(fuel - 1) (TeVarSet.add x vars) () )
-  
       (* Pick a random node that isn't a variable. *)
-      (*Do 
+      Do 
         ( M.delay @@ fun () ->
           M.sum 
             [
               (* App. *)
-              (*begin 
+              begin 
                 M.bind (split_fuel (fuel - 1)) @@ fun (f1, f2) ->
                 M.return @@ App (
                   gen_term ~fuel:f1 vars (), 
                   gen_term ~fuel:f2 vars () )
-              end;*)
+              end;
               (* Abs. *)
               begin 
                 let x = new_name () in
@@ -63,7 +60,7 @@ module Make (M : Utils.MonadPlus) = struct
                   gen_term ~fuel:(fuel - 1) (TeVarSet.add x vars) () )
               end;
               (* Let. *)
-              (*begin 
+              begin 
                 let x = new_name () in 
                 M.bind (split_fuel (fuel - 1)) @@ fun (f1, f2) ->
                 M.return @@ Let (
@@ -87,8 +84,8 @@ module Make (M : Utils.MonadPlus) = struct
                   [x; y],
                   gen_term ~fuel:f1 vars (),
                   gen_term ~fuel:f2 (vars |> TeVarSet.add x |> TeVarSet.add y) () )
-              end;*)
-            ] )*)
+              end;
+            ] )
 
   let typed ~depth =
     (* Build an untyped term lazily (i.e. most computations are frozen at Do nodes). *)

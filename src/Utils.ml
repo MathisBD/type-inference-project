@@ -9,9 +9,6 @@ let string_of_doc doc =
 module Variables () : sig
   type t = private { name : string; stamp : int }
 
-  (* TODO : debug *)
-  val make : string -> int -> t
-
   val compare : t -> t -> int
   val eq : t -> t -> bool
   val fresh : string -> t
@@ -23,8 +20,6 @@ module Variables () : sig
   module Map : Map.S with type key = t
 end = struct
   type t = { name : string; stamp : int }
-
-  let make name stamp = { name ; stamp }
 
   let name v = v.name
   let compare = Stdlib.compare
