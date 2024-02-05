@@ -1,6 +1,8 @@
 type env = Unif.Env.t
 
-val decode : env -> Constraint.variable -> STLC.ty
+type slot
+
+val decode : (Constraint.variable, slot) Hashtbl.t -> env -> Constraint.variable -> STLC.ty
 (** Suppose the unification environment [env] contains the following equations:
 
     ?w = ?w1 -> ?w2

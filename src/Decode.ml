@@ -5,10 +5,12 @@
 type env = Unif.Env.t
 type slot = Ongoing | Done of STLC.ty
 
-let table = Hashtbl.create 42
 let new_var = STLC.TyVar.namegen [| "α"; "β"; "γ"; "δ" |]
 
-let decode (env : env) (v : Constraint.variable) : STLC.ty =
+
+let decode (table : (Constraint.variable , slot) Hashtbl.t) (env : env) (v : Constraint.variable) : STLC.ty =
+  (*let table = Hashtbl.create 42 in*)
+  
   let exception Found_cycle of Constraint.variable Utils.cycle in
   let rec decode (v : Constraint.variable) : STLC.ty =
     let repr = Unif.Env.repr v env in

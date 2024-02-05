@@ -103,24 +103,19 @@ module Make (M : Utils.MonadPlus) = struct
         Infer.decode w ) )
     in
     (* Generate terms by applying the constraint solver recursively. *)
-    let rec solve env c depth =
+    let rec solve table env c =
       let (_, env, nc) = Solver.eval ~log:false env c in
-      (* Print the log. *)
-      (*log 
-        |> PPrint.(separate (hardline))
-        |> Utils.string_of_doc 
-        |> print_endline ;*)
       match nc with 
       (* Victory ! We produced a well-typed term. *)
       | Solver.NRet on_sol -> 
-          M.return @@ on_sol @@ Decode.decode env
+          M.return @@ on_sol @@ Decode.decode table env
       (* This is what happens when the [untyped] function generates a term that 
        * can't be typed. It's ok, we simply discard this term. *)
       | Solver.NErr _ -> 
           M.fail
       (* We reached a Do node : recurse. *)
       | Solver.NDo mc -> 
-          M.bind mc @@ fun c -> solve env c (depth+1)
+          M.bind mc @@ fun c -> solve (Hashtbl.copy table) env c 
     in
-      solve Unif.Env.empty c0 0
+      solve (Hashtbl.create 42) Unif.Env.empty c0
 end

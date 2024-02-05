@@ -46,22 +46,13 @@ let () =
       Infer.has_type Untyped.Var.Map.empty term w,
       Infer.decode w ) )
   in
-  let rec solve env c depth =
-    let (_, env, nc) = Solver.eval ~log:true env c in
+  let rec solve table env c depth =
+    let (_, env, nc) = Solver.eval ~log:false env c in
     match nc with 
     (* Victory ! We produced a well-typed term. *)
     | Solver.NRet on_sol -> 
         print_endline (indent depth ">return") ;
-        print_env env ;
-        Decode.decode env (Constraint.Var.make "final_type" 0)
-          |> STLCPrinter.print_ty |> Utils.string_of_doc |> print_endline ;
-        Decode.decode env (Constraint.Var.make "final_type" 0)
-          |> STLCPrinter.print_ty |> Utils.string_of_doc |> print_endline ;
-        
-        let (res_term, res_ty) = on_sol @@ Decode.decode env in
-
-        res_ty |> STLCPrinter.print_ty |> Utils.string_of_doc |> print_endline ;
-        MSeq.return (res_term, res_ty)
+        MSeq.return @@ on_sol @@ Decode.decode table env
     (* This is what happens when the [untyped] function generates a term that 
      * can't be typed. It's ok, we simply discard this term. *)
     | Solver.NErr _ -> 
@@ -70,9 +61,9 @@ let () =
     (* We reached a Do node : recurse. *)
     | Solver.NDo mc -> 
         print_endline (indent depth ">ndo") ;
-        MSeq.bind mc @@ fun c -> solve env c (depth+1)
+        MSeq.bind mc @@ fun c -> solve (Hashtbl.copy table) env c (depth+1)
   in
-    solve Unif.Env.empty c 0 
+    solve (Hashtbl.create 42) Unif.Env.empty c 0 
     |> MSeq.run
     |> Seq.map (fun (term, ty) -> 
         PPrint.separate PPrint.hardline [STLCPrinter.print_term term; STLCPrinter.print_ty ty])

@@ -65,7 +65,7 @@ let call_typer ~config (term : Untyped.term) =
     let logs, env, nf = Solver.eval ~log:config.log_solver Unif.Env.empty cst in
     let result =
       match nf with
-      | NRet v -> Ok (v (Decode.decode env))
+      | NRet v -> (*Ok (v (Decode.decode env))*) Utils.not_yet "minihell.NRet" (v, env)
       | NErr e -> Error e
       | NDo _ -> .
     in
