@@ -8,7 +8,7 @@ type slot = Ongoing | Done of STLC.ty
 let new_var = STLC.TyVar.namegen [| "α"; "β"; "γ"; "δ" |]
 
 
-let decode (table : (Constraint.variable , slot) Hashtbl.t) (env : env) (v : Constraint.variable) : STLC.ty =
+let decode (table : (Constraint.variable, slot) Hashtbl.t) (env : env) (v : Constraint.variable) : STLC.ty =
   let exception Found_cycle of Constraint.variable Utils.cycle in
   let rec decode (v : Constraint.variable) : STLC.ty =
     let repr = Unif.Env.repr v env in
